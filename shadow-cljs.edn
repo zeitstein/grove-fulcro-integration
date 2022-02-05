@@ -1,0 +1,19 @@
+;;todo
+{:deps     {:aliases [:dev]}
+ :dev-http {8000 "public"}
+ :builds   {:main
+            {:target     :browser
+             :output-dir "public/js/main"
+             :asset-path "/js/main"
+             :modules {:main {:init-fn ui-custom/init
+                              :preloads [shadow.experiments.grove.dev-support]}}
+             :devtools   {:preloads   [development-preload
+                                       com.fulcrologic.fulcro.inspect.preload
+                                       #_com.fulcrologic.fulcro.inspect.dom-picker-preload]}}
+
+            :performance-dev
+            {:target           :browser
+             :output-dir       "public/js/main"
+             :asset-path       "/js/main"
+             :modules          {:main {:init-fn ui-vanilla/init}}
+             :compiler-options {:closure-defines {'goog.DEBUG false}}}}}

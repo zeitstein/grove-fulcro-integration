@@ -1,0 +1,10 @@
+{
+  "name": "grove-fulcro-integration",
+  "version": "0.0.1",
+  "description": "",
+  "private": true,
+  "devDependencies": {
+    "shadow-cljs": "2.16.12"
+  },
+  "dependencies": {}
+}
