@@ -1,5 +1,8 @@
 (ns fulcro.vanilla
-  "Only using functionality provided by vanilla Fulcro."
+  "Provides: `use-root` and `use-component`.
+    
+   Uses API from vanilla Fulcro Raw to create custom Fulcro hook types for
+   grove's components."
   (:require
    [shadow.experiments.grove.components :as comp]
    [shadow.experiments.grove.protocols :as gp]
@@ -8,22 +11,6 @@
    [com.fulcrologic.fulcro.raw.application :as rapp]
    [com.fulcrologic.fulcro.algorithms.tx-processing.synchronous-tx-processing :as stx]
    [taoensso.timbre :as log]))
-
-;;todo extract this elsewhere?
-(defonce data-ref
-  (-> {}
-      (db/configure {})
-      (atom)))
-
-(declare APP)
-
-(defonce rt-ref
-  (let [fulcro-app (stx/with-synchronous-transactions
-                     (rapp/fulcro-app {:render-root!      (constantly true)
-                                       :optimized-render! (constantly true)}))]
-    (rt/prepare {::app fulcro-app} data-ref ::rt-id)))
-
-(defn APP [] (::app @rt-ref))
 
 (defonce listener-ids (atom 0))
 
@@ -66,6 +53,7 @@
     (rapp/remove-render-listener! app (or (:listener-id options) ident))))
 
 (defn use-component [ident model options]
+  ;;todo docstring
   (FulcroComponent. ident model options nil nil nil nil))
 
 
@@ -107,4 +95,5 @@
     (rapp/remove-render-listener! app (or (:listener-id options) root-key))))
 
 (defn use-root [root-key model options]
+  ;;todo docstring
   (FulcroRoot. root-key model options nil nil nil nil))
