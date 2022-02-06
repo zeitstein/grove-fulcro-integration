@@ -1,6 +1,6 @@
-(ns ui-custom
+(ns custom.ui
   (:require
-   [fulcro.custom :as f]
+   [custom.fulcro :as f]
    [generators :as gen]
    [shadow.experiments.grove :as sg :refer (<< defc)]
    [shadow.experiments.grove.runtime :as rt]

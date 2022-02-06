@@ -1,4 +1,4 @@
-(ns fulcro.vanilla
+(ns zeitstein.grove.fulcro
   "Provides: `use-root` and `use-component`.
     
    Uses API from vanilla Fulcro Raw to create custom Fulcro hook types for
@@ -52,8 +52,16 @@
   (hook-destroy! [this]
     (rapp/remove-render-listener! app (or (:listener-id options) ident))))
 
-(defn use-component [ident model options]
+(defn use-component
   ;;todo docstring
+  "
+   From grove user's perspective...
+   
+   Mainly does:
+   1. sets a listener to be called after transactions
+   2. stores props queried for in an atom. Only run callback if props have changed.
+  "
+  [ident model options]
   (FulcroComponent. ident model options nil nil nil nil))
 
 

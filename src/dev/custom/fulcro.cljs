@@ -1,5 +1,11 @@
-(ns fulcro.custom
-  "Enabling targeted refreshes (declared on `transact!!`)"
+(ns custom.fulcro
+  "
+   Enabling targeted refreshes (declared on `transact!!`)
+
+   Two main things:
+   1. allow for :grove-refresh option
+   2. modify how Fulcro stores and runs render listeners
+  "
   (:require
    [shadow.experiments.grove.components :as comp]
    [shadow.experiments.grove.protocols :as gp]
@@ -74,10 +80,13 @@
 (defonce rt-ref
   (let [fulcro-app
         (-> (stx/with-synchronous-transactions
-              (rapp/fulcro-app {#_#_:submit-transaction! #(js/console.log "tx!") ;; doesn't work because of a bug in fulcro with-sync-tx overwrite submit-transaction! from fulcro-app
-                                :refresh-component! refresh-component!
-                                :render-root!      (constantly true)
-                                :optimized-render! (constantly true)}))
+              (rapp/fulcro-app
+                {;; doesn't work because of a bug in fulcro with-sync-tx overwrite submit-transaction! from fulcro-app
+                 ;; see docstring for rapp/headless-synchronous-app
+                 #_#_:submit-transaction! #(js/console.log "tx!")
+                 :refresh-component! refresh-component!
+                 :render-root!      (constantly true)
+                 :optimized-render! (constantly true)}))
             (assoc-in ;; goes around default schedule-render! debouncing for faster tx processing
               ;;todo actually, this might not be needed...
               [:com.fulcrologic.fulcro.application/algorithms
@@ -178,7 +187,6 @@
     (throw (ex-info "shouldn't have changing deps?" {})))
 
   (hook-destroy! [this]
-    ;; (js/console.log "removing hoook" (or (:listener-id options) ident))
     (remove-render-listener! app ident (:listener-id options))))
 
 (defn use-component [ident model options]

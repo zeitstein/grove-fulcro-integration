@@ -1,4 +1,4 @@
-(ns ui-vanilla
+(ns ui
   "Illustrates two approaches:
     1. Similar to Fulcro `use-root-root` gets the whole denormalized data
        (using the root query) tree and passes it down.
@@ -10,7 +10,7 @@
     For simplicity, only client-side. But, most anything you know from Fulcro
     (unrelated to rendering) could be used."
   (:require
-   [fulcro.vanilla :as f] ;;todo change file structure to grove-fulcro.vanilla
+   [zeitstein.grove.fulcro :as f] ;;todo change file structure to grove-fulcro.vanilla
    [generators :as gen]
    [shadow.experiments.grove :as sg :refer (<< defc)]
    [shadow.experiments.grove.runtime :as rt]

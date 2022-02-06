@@ -5,7 +5,7 @@
             {:target     :browser
              :output-dir "public/js/main"
              :asset-path "/js/main"
-             :modules {:main {:init-fn ui-vanilla/init
+             :modules {:main {:init-fn ui/init
                               :preloads [shadow.experiments.grove.dev-support]}}
              :devtools   {:preloads   [development-preload
                                        com.fulcrologic.fulcro.inspect.preload
