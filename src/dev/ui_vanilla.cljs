@@ -1,6 +1,6 @@
 (ns ui-vanilla
   (:require
-   [fulcro.vanilla :as f]
+   [fulcro.vanilla :as f] ;;todo change file structure to grove-fulcro.vanilla
    [generators :as gen]
    [shadow.experiments.grove :as sg :refer (<< defc)]
    [shadow.experiments.grove.runtime :as rt]
@@ -29,10 +29,15 @@
   (action [{:keys [state]}]
     (swap! state update-in [:id id :open] not)))
 
-(defmutation text! [{:keys [id text]}]
+(defmutation text! [{:keys [id]}]
   (action [{:keys [state]}]
-    (swap! state assoc-in [:id id :text] (str (rand)))))
+    (swap! state update-in [:id id :text] #(str "node: " id " " (rand)))))
 
+(defn common [id open text ident]
+  (<< [:button {:on-click {:e ::toggle! :id id}} (str open)]
+      [:button {:on-click {:e ::test! :id id}} "tx!"]
+      [:button {:on-click {:e ::test!! :id id :ident ident}} "tx!!"]
+      [:span text]))
 
 (defc use-component-node [ident]
   (bind {:keys [id open text kida listener-id]}
@@ -40,10 +45,7 @@
 
   (render
     (<< [:div
-         [:button {:on-click {:e ::toggle! :id id}} (str open)]
-         [:button {:on-click {:e ::test! :id id}} "tx!"]
-         [:button {:on-click {:e ::test!! :id id :ident ident}} "tx!!"]
-         [:span text]
+         (common id open text ident)
          (when (and open (seq kida))
            (<< [:div {:style "margin-left: 20px;"}
                 (sg/keyed-seq kida identity use-component-node)]))])))
@@ -51,23 +53,30 @@
 
 (defn use-root-node [{:keys [id open text kida]}]
   (<< [:div
-       [:button {:on-click {:e ::toggle! :id id}} (str open)]
-       [:button {:on-click {:e ::test! :id id}} "tx!"]
-       [:button {:on-click {:e ::test!! :id id :ident [:id id]}} "tx!!"]
-       [:span text]
+       (common id open text [:id id])
        (when (and open (seq kida))
          (<< [:div {:style "margin-left: 20px;"}
               (sg/keyed-seq kida :id use-root-node)]))]))
 
-(defc ui-root []
-  ;; does not fit grove's philosophy, but can be used
+;; each component queries for what it needs directly
+(defc use-component-root []
+  ;;todo ideally would get {::root-node [:id "0"]}, but don't know how
+  (bind {:keys [id]}
+    (f/use-component [::root-node] (rc/nc [:id]) {:initialize? false}))
+
+  (render (<< [:h3 "use-component"]
+              (use-component-node [:id id]))))
+
+;; standard fulcro way - root queries for the whole data tree
+(defc use-root-root []
   (bind data-tree (f/use-root ::root-node Tree {:initialize false}))
 
-  (render (<< [:h2 "use-component"]
-              (use-component-node [:id "0"])
+  (render (<< [:h3 "use-root"]
+              (use-root-node data-tree))))
 
-              [:h2 "use-root"]
-              (use-root-node data-tree)))
+(defc ui-root []
+  (render (<< (use-component-root)
+              (use-root-root)))
 
   ;;todo use render-target
   ;; events will bubble up
@@ -79,7 +88,8 @@
     (log/debug "click!")
     (rc/transact! app [`(text! [:id ~id])]))
 
-  ;; doesn't work as intended – all listeners will be called (2022-02-05)!
+  ;; doesn't work as intended – all listeners will be called!
+  ;; (refresh-component! is broken in raw (2022-02-05))
   ;; enabling this is the main work in custom 
   (event ::test!! [{::f/keys [app]} {:keys [id ident]}]
     (log/debug "click!")
@@ -90,7 +100,7 @@
   (sg/render f/rt-ref (js/document.getElementById "root") (ui-root)))
 
 (defn init []
-  #_(inspect/app-started! (f/APP))
+  (inspect/app-started! (f/APP))
 
   (merge/merge-component! (f/APP) Tree (gen/tree-denormalized 2 2)
     :replace [::root-node])
@@ -106,6 +116,9 @@
       (:com.fulcrologic.fulcro.application/runtime-atom)
       (deref)
       (:com.fulcrologic.fulcro.application/render-listeners))
+
+  ;;todo change root node doesn't work (need changing deps)
+  (merge/merge-component! (f/APP) Node [:id "0-0"] :replace [::root-node])
   ;
   )
 

@@ -27,6 +27,7 @@
 
 (defonce listener-ids (atom 0))
 
+;; based on https://github.com/thheller/shadow-experiments/blob/master/src/dev/dummy/fulcro.cljs
 (deftype FulcroComponent [ident model options ^:mutable data app component idx]
   gp/IBuildHook
   (hook-build [this c i]
