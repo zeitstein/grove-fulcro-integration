@@ -1,9 +1,9 @@
 (ns custom.fulcro
   "
-   Enabling targeted refreshes (declared on `transact!!`)
+   Enabling targeted refreshes (declared on `transact!!`) in fulcro raw + sync tx.
 
    Two main things:
-   1. allow for :grove-refresh option
+   1. allow for :grove-refresh option (akin to :only-refresh)
    2. modify how Fulcro stores and runs render listeners
   "
   (:require
@@ -118,7 +118,7 @@
     (receive-props (get-props))
     (add-render-listener! app ident listener-id
       (fn [app _]
-        ;; (log/debug "listener" ident)
+        (log/debug "listener" ident)
         (let [props (get-props)]
           (when-not (= @prior-props props)
             (reset! prior-props props)
@@ -137,7 +137,7 @@
     (receive-props (current-props))
     (add-render-listener! app ident listener-id
       (fn [app _]
-        ;; (log/debug "listener" ident listener-id)
+        (log/debug "listener" ident listener-id)
         (let [old @prior-props
               props (current-props)]
           (when-not (identical? old props)
@@ -156,6 +156,7 @@
 
   gp/IHook
   (hook-init! [this]
+    (log/debug "hook init" ident)
     (add-component! app model
       (assoc options :receive-props
         (fn [new-data]
@@ -178,6 +179,7 @@
   ;; this will be triggered at render-time when component is just before update
   ;; but we already did the work in the :receive-props callback
   (hook-update! [this]
+    (log/debug "hook update" ident)
     true)
 
   ;; this would be called when the arguments to use-root changed
@@ -187,6 +189,7 @@
     (throw (ex-info "shouldn't have changing deps?" {})))
 
   (hook-destroy! [this]
+    (log/debug "hook destroy" ident)
     (remove-render-listener! app ident (:listener-id options))))
 
 (defn use-component [ident model options]

@@ -10,7 +10,7 @@
     For simplicity, only client-side. But, most anything you know from Fulcro
     (unrelated to rendering) could be used."
   (:require
-   [zeitstein.grove.fulcro :as f] ;;todo change file structure to grove-fulcro.vanilla
+   [zeitstein.grove.fulcro :as f]
    [generators :as gen]
    [shadow.experiments.grove :as sg :refer (<< defc)]
    [shadow.experiments.grove.runtime :as rt]
@@ -21,7 +21,7 @@
    [com.fulcrologic.fulcro.inspect.inspect-client :as inspect]
    [taoensso.timbre :as log]))
 
-;; Performance
+;; Performance (without inspect, dev build)
 ;;
 ;; toggling 5 5 tree (4k nodes) at root
 ;; component 360-440ms
@@ -155,7 +155,7 @@
       (deref)
       (:com.fulcrologic.fulcro.application/render-listeners))
 
-  ;;todo change root node doesn't work (need changing deps)
+  ;; change root node (need changing hook deps)
   (merge/merge-component! (app) Node [:id "0-0"] :replace [::root-node])
   ;
   )

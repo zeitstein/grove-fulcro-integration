@@ -1,38 +1,51 @@
 (ns zeitstein.grove.fulcro
   "Provides: `use-root` and `use-component`.
     
-   Uses API from vanilla Fulcro Raw to create custom Fulcro hook types for
+   Uses high-level API from vanilla Fulcro Raw to create Fulcro hook types for
    grove's components."
   (:require
    [shadow.experiments.grove.components :as comp]
    [shadow.experiments.grove.protocols :as gp]
-   [shadow.experiments.grove.db :as db]
-   [shadow.experiments.grove.runtime :as rt]
    [com.fulcrologic.fulcro.raw.application :as rapp]
-   [com.fulcrologic.fulcro.algorithms.tx-processing.synchronous-tx-processing :as stx]
    [taoensso.timbre :as log]))
 
-(defonce listener-ids (atom 0))
+;; needed for lifecycle methods
+(defonce listener-nums (atom 0))
+
+(defn listener-id [ident num]
+  (conj ident num))
 
 ;; based on https://github.com/thheller/shadow-experiments/blob/master/src/dev/dummy/fulcro.cljs
-(deftype FulcroComponent [ident model options ^:mutable data app component idx]
+(deftype FulcroComponent [^:mutable ident
+                          ^:mutable fulcro-comp
+                          ^:mutable options
+                          ^:mutable data
+                          listener-num
+                          fulcro-app
+                          component idx]
+
   gp/IBuildHook
   (hook-build [this c i]
     (let [app (comp/get-env c ::app)
-          listener-id (swap! listener-ids inc)
-          options (merge options {:ident ident
-                                  :listener-id [ident listener-id]})]
-      (FulcroComponent. ident model options data app c i)))
+          num (swap! listener-nums inc)]
+      (FulcroComponent. ident fulcro-comp options data num app c i)))
 
   gp/IHook
   (hook-init! [this]
-    (rapp/add-component! app model
-      (assoc options :receive-props
-        (fn [new-data]
-          (log/debug "hook new data")
-          (set! data new-data)
-          ;; signal component to re-render
-          (comp/hook-invalidate! component idx)))))
+    (log/debug "hook init" ident listener-num)
+    ;; vanilla add-component! has the issue that props are memoized only *after*
+    ;; they change for the first time, not on init. this is fixed in custom.
+    (rapp/add-component! fulcro-app fulcro-comp
+      (merge options
+        {:ident ident
+         :listener-id (listener-id ident listener-num)
+         :receive-props (fn [new-data] ;; called immediately
+                          (log/debug "hook new data" ident listener-num)
+                          ;;todo i can fix the issue described above with vanilla add-component!?
+                          ;; only set! and invalidate if new-data comes in
+                          (set! data new-data)
+                          ;; signal component to re-render
+                          (comp/hook-invalidate! component idx))})))
 
   ;; doesn't seem to go async, no need for suspense
   (hook-ready? [this]
@@ -42,41 +55,68 @@
     data)
 
   (hook-update! [this]
+    (log/debug "hook update" ident listener-num)
     true)
 
-  (hook-deps-update! [this new-val]
-    ;;todo thheller: probably ok to have changing deps
-    ;; but I don't know what I'd need to call in fulcro to tell it
-    (throw (ex-info "shouldn't have changing deps?" {})))
+  (hook-deps-update! [this ^FulcroComponent new-val]
+    (log/debug "hoop deps update" ident listener-num)
+    (let [new-ident       (.-ident new-val)
+          new-fulcro-comp (.-fulcro-comp new-val)
+          new-options     (.-options new-val)]
+      (if (and
+            (= ident new-ident)
+            (= fulcro-comp new-fulcro-comp)
+            (= options new-options))
+        false
+        (do
+          (rapp/remove-render-listener! fulcro-app (listener-id ident listener-num))
+
+          (set! ident new-ident)
+          (set! fulcro-comp new-fulcro-comp)
+          (set! options new-options)
+
+          (let [old-data data]
+            (rapp/add-component! fulcro-app new-fulcro-comp
+              (merge new-options
+                {:ident new-ident
+                 :listener-id (listener-id new-ident listener-num)
+                 :receive-props (fn [new-data] ;; called immediately
+                                  (log/debug "hook deps update new data" ident listener-num)
+                                  (set! data new-data)
+                                  ;;todo thheller says this shouldn't work, it shouldn't be done this way
+                                  (comp/hook-invalidate! component idx))}))
+            (not= old-data data))))))
 
   (hook-destroy! [this]
-    (rapp/remove-render-listener! app (or (:listener-id options) ident))))
+    (log/debug "hook destroy" ident listener-num)
+    (rapp/remove-render-listener! fulcro-app (listener-id ident listener-num))))
 
 (defn use-component
   ;;todo docstring
   "
-   From grove user's perspective...
+
+   options are NOT 1-1 with add-component! ;;todo
    
    Mainly does:
    1. sets a listener to be called after transactions
-   2. stores props queried for in an atom. Only run callback if props have changed.
+   2. stores props queried for in an atom. Only runs callback if props have changed.
   "
-  [ident model options]
-  (FulcroComponent. ident model options nil nil nil nil))
+  [ident fulcro-comp options]
+  (FulcroComponent. ident fulcro-comp options nil nil nil nil nil))
 
 
-(deftype FulcroRoot [root-key model options ^:mutable data app component idx]
+(deftype FulcroRoot [root-key fulcro-comp options ^:mutable data app component idx]
   gp/IBuildHook
   (hook-build [this c i]
     (let [app (comp/get-env c ::app)
-          listener-id (swap! listener-ids inc)
+          listener-id (swap! listener-nums inc)
           options (merge options
                     {:listener-id [root-key listener-id]})]
-      (FulcroRoot. root-key model options data app c i)))
+      (FulcroRoot. root-key fulcro-comp options data app c i)))
 
   gp/IHook
   (hook-init! [this]
-    (rapp/add-root! app root-key model
+    (rapp/add-root! app root-key fulcro-comp
       (assoc options
         :receive-props
         (fn [new-data]
@@ -95,13 +135,12 @@
     true)
 
   (hook-deps-update! [this new-val]
-    ;;todo thheller: probably ok to have changing deps
-    ;; but I don't know what I'd need to call in fulcro to tell it
+    ;;todo
     (throw (ex-info "shouldn't have changing deps?" {})))
 
   (hook-destroy! [this]
     (rapp/remove-render-listener! app (or (:listener-id options) root-key))))
 
-(defn use-root [root-key model options]
+(defn use-root [root-key fulcro-comp options]
   ;;todo docstring
-  (FulcroRoot. root-key model options nil nil nil nil))
+  (FulcroRoot. root-key fulcro-comp options nil nil nil nil))
