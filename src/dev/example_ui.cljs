@@ -4,8 +4,7 @@
        (using the root query) tree and passes it down.
     2. `use-component-root` queries for and only passes down the root-node *ident*,
         and so on down the component tree. In other words, components query
-        directly for data they need by ident. (Conceptually similar to how one
-        would use Fulcro + React hooks.)
+        directly for data they need by ident.
     
     For simplicity, only client-side. But, most anything you know from Fulcro
     (unrelated to rendering) could be used."
